@@ -11,10 +11,6 @@ const pageMeta: Record<string, { title: string; description: string }> = {
     title: 'Home',
     description: 'Powder Ridge HOA serves the Powder Ridge community on Grand Mesa, Colorado. Find board info, CCRs, meeting minutes, and community resources.',
   },
-  '/about': {
-    title: 'About',
-    description: 'About - Powder Ridge HOA',
-  },
   '/contact': {
     title: 'Contact',
     description: 'Have a question for the Powder Ridge HOA board or Design Review Committee? Use this form to reach the right person directly.',

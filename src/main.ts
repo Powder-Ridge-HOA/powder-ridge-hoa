@@ -16,14 +16,23 @@ app.use(head);
 
 
 app.use(
-  createAuth0({
-    domain: import.meta.env.VITE_AUTH0_DOMAIN,
-    clientId: import.meta.env.VITE_AUTH0_CLIENT_ID,
-    authorizationParams: {
-      redirect_uri: window.location.origin + '/callback',
-      ...(import.meta.env.VITE_AUTH0_AUDIENCE ? { audience: import.meta.env.VITE_AUTH0_AUDIENCE } : {}),
+  createAuth0(
+    {
+      domain: import.meta.env.VITE_AUTH0_DOMAIN,
+      clientId: import.meta.env.VITE_AUTH0_CLIENT_ID,
+      authorizationParams: {
+        redirect_uri: window.location.origin + '/callback',
+        ...(import.meta.env.VITE_AUTH0_AUDIENCE ? { audience: import.meta.env.VITE_AUTH0_AUDIENCE } : {}),
+      },
     },
-  })
+    {
+      // Don't let the SDK auto-process ?code= & ?state=. CallbackPage will
+      // call handleRedirectCallback() explicitly. This prevents the SDK's
+      // built-in URL cleanup (history.replaceState to "/") from racing
+      // against our router.replace to the intended destination.
+      skipRedirectCallback: true,
+    },
+  )
 )
 
 app.mount('#app');
@@ -36,4 +45,3 @@ document.addEventListener('keydown', (e) => {
     e.target.click();
   }
 });
-

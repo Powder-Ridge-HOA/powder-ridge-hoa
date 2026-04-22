@@ -20,7 +20,7 @@ function onHeroMouseMove(e) {
 const heroStyle = computed(() => {
   const img = props.section?.image;
   if (!img) return {};
-  const url = sanityImage(img).width(1920).fit('crop').auto('format').url();
+  const url = sanityImage(img).width(1920).height(800).fit('crop').auto('format').url();
   return { '--hero-image': `url(${url})` };
 });
 
@@ -43,11 +43,19 @@ onUnmounted(() => { heroRef.value?.removeEventListener('mousemove', onHeroMouseM
 .hero {
   --cursor-x: 50%;
   --cursor-y: 40%;
-  background: radial-gradient(600px circle at var(--cursor-x) var(--cursor-y), rgba(255,255,255,0.15), transparent 60%), linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  /* Hero gradient endpoints — scoped per theme so light mode stays bright/airy
+     while dark mode stays deep. Both pairs keep AA+ contrast for white text. */
+  --hero-from: #018e4a;
+  --hero-to: #016b37;
+  background: radial-gradient(600px circle at var(--cursor-x) var(--cursor-y), rgba(255,255,255,0.12), transparent 60%), linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%);
   background-size: cover; background-position: center; will-change: background; transition: background 0.1s ease;
 }
+[data-theme="dark"] .hero {
+  --hero-from: #016b37;
+  --hero-to: #014322;
+}
 .hero[style*="--hero-image"] {
-  background: radial-gradient(600px circle at var(--cursor-x) var(--cursor-y), rgba(255,255,255,0.12), transparent 60%), linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 75%, transparent) 0%, color-mix(in srgb, var(--color-secondary) 75%, transparent) 100%), var(--hero-image);
+  background: radial-gradient(600px circle at var(--cursor-x) var(--cursor-y), rgba(255,255,255,0.1), transparent 60%), linear-gradient(135deg, color-mix(in srgb, var(--hero-from) 75%, transparent) 0%, color-mix(in srgb, var(--hero-to) 75%, transparent) 100%), var(--hero-image);
   background-size: cover; background-position: center;
 }
 </style>

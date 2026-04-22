@@ -121,6 +121,14 @@ const currentLogo = computed(() => {
   object-fit: contain;
 }
 
+/* Dark-theme contrast: invert lightness, then rotate hues 180° back so
+   brand colors stay recognizable while dark fills become light. Works for
+   multi-color SVGs without needing a second upload. Applied instantly so the
+   logo tracks the theme toggle without a visible delay. */
+[data-theme="dark"] .site-header__logo-img {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 .site-header__nav {
   display: flex;
   align-items: center;

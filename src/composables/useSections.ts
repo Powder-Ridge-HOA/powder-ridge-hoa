@@ -12,6 +12,12 @@ import ContactSection from '@/components/sections/ContactSection.vue'
 import TextContent from '@/components/sections/TextContent.vue'
 import PortfolioSection from '@/components/sections/PortfolioSection.vue'
 import TeamProjectsSection from '@/components/sections/TeamProjectsSection.vue'
+import BoardMemberGrid from '@/components/sections/BoardMemberGrid.vue'
+import CcrList from '@/components/sections/CcrList.vue'
+import MinutesArchive from '@/components/sections/MinutesArchive.vue'
+import ResidentDirectory from '@/components/sections/ResidentDirectory.vue'
+import FaqList from '@/components/sections/FaqList.vue'
+import CommitteePanel from '@/components/sections/CommitteePanel.vue'
 
 /** Maps section _type (from Sanity) to Vue components */
 export const sectionMap: Record<string, Component> = {
@@ -28,8 +34,52 @@ export const sectionMap: Record<string, Component> = {
   textContent: TextContent,
   portfolioSection: PortfolioSection,
   teamProjectsSection: TeamProjectsSection,
+  boardMemberGrid: BoardMemberGrid,
+  ccrList: CcrList,
+  minutesArchive: MinutesArchive,
+  residentDirectory: ResidentDirectory,
+  faqList: FaqList,
+  committeePanel: CommitteePanel,
 }
 
-/** GROQ query — just fetch the whole page document with sections */
+/** Section-type projections that pull in collection data via GROQ */
+const sectionProjection = `
+  sections[]{
+    ...,
+    _type == "boardMemberGrid" => {
+      ...,
+      "members": *[_type == "boardMember"] | order(position asc){
+        _id, name, position, email, phone, description, image
+      }
+    },
+    _type == "ccrList" => {
+      ...,
+      "ccrs": *[_type == "ccr"] | order(refId asc){
+        _id, ccr, refId, refIdDisplay, ccrContent
+      }
+    },
+    _type == "minutesArchive" => {
+      ...,
+      "minutes": *[_type == "boardMinutes"] | order(meetingStart desc){
+        _id, title, meetingStart, endTime, teleconference, tags,
+        oldBusiness, newBusiness, treasurersReport
+      }
+    },
+    _type == "faqList" => {
+      ...,
+      "faqs": *[_type == "faq"] | order(_createdAt asc){
+        _id, question, answer
+      }
+    },
+    _type == "committeePanel" => {
+      ...,
+      committee->{
+        _id, name, chairman, members, description, email, phone, image
+      }
+    }
+  }
+`
+
+/** GROQ query — fetches the page doc and inlines collection data for dynamic sections */
 export const pageQuery = (slug: string) =>
-  `*[_type == "page" && slug.current == "${slug}"][0]{ title, "slug": slug.current, sections }`
+  `*[_type == "page" && slug.current == "${slug}"][0]{ title, "slug": slug.current, ${sectionProjection} }`

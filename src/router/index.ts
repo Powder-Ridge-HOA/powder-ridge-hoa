@@ -17,7 +17,6 @@ function checkMember(user: Record<string, unknown>): boolean {
 }
 
 const Home = () => import('@/pages/Home.vue');
-const About = () => import('@/pages/About.vue');
 const Contact = () => import('@/pages/Contact.vue');
 const PrivacyPolicy = () => import('@/components/layout/LegalPage.vue');
 const TermsAndConditions = () => import('@/components/layout/LegalPage.vue');
@@ -39,11 +38,6 @@ const routes = [
     path: '/',
     name: 'Home',
     component: Home,
-  },
-  {
-    path: '/about',
-    name: 'About',
-    component: About,
   },
   {
     path: '/contact',
@@ -131,12 +125,12 @@ const router = createRouter({
   },
 });
 
-router.beforeEach(async (to, _from, next) => {
-  if (!to.meta.requiresAuth) return next();
+router.beforeEach(async (to, from) => {
+  console.log('[router.beforeEach]', { toPath: to.fullPath, fromPath: from.fullPath, requiresAuth: !!to.meta.requiresAuth, origin: window.location.origin });
+  if (!to.meta.requiresAuth) return true;
 
   const { isAuthenticated, isLoading, user, loginWithRedirect } = useAuth0();
 
-  // Wait for SDK to finish loading
   if (isLoading.value) {
     await new Promise<void>((resolve) => {
       const unwatch = watchEffect(() => {
@@ -145,15 +139,32 @@ router.beforeEach(async (to, _from, next) => {
     });
   }
 
+  console.log('[router.beforeEach] auth state', {
+    isAuthenticated: isAuthenticated.value,
+    roles: user.value?.[ROLES_CLAIM],
+    memberCheck: user.value ? checkMember(user.value) : null,
+  });
+
   if (!isAuthenticated.value) {
-    return loginWithRedirect({ appState: { targetUrl: to.fullPath } });
+    try {
+      sessionStorage.setItem('auth:targetUrl', to.fullPath);
+      console.log('[router.beforeEach] stashed targetUrl on origin', window.location.origin, '->', to.fullPath);
+    } catch (e) { console.warn('[router.beforeEach] sessionStorage failed', e); }
+    loginWithRedirect({ appState: { targetUrl: to.fullPath } });
+    return false;
   }
 
   if (!checkMember(user.value || {})) {
-    return next({ name: 'Unauthorized' });
+    console.log('[router.beforeEach] not a member, redirecting to /unauthorized');
+    return { name: 'Unauthorized' };
   }
 
-  return next();
+  console.log('[router.beforeEach] allowing through to', to.fullPath);
+  return true;
+});
+
+router.afterEach((to, from) => {
+  console.log('[router.afterEach] landed on', to.fullPath, '(from', from.fullPath, ') origin=', window.location.origin);
 });
 
 export default router;

@@ -29,7 +29,9 @@ export function useRevealObserver(trigger?: Ref<unknown>) {
           }
         })
       },
-      { threshold: 0.15 }
+      // threshold 0 so very tall sections (e.g. full CCR list) still trigger
+      // reveal when any sliver enters the viewport
+      { threshold: 0, rootMargin: '0px 0px -64px 0px' }
     )
     scan()
   })

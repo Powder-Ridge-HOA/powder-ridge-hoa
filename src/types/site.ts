@@ -24,6 +24,7 @@ export interface SiteConfig {
   ctaFooterLabel: string;
   ctaFooterUrl: string;
   copyrightText: string;
+  craftedBy: string;
   primaryNav: NavItem[];
   footerNav: NavItem[];
   legalNav: NavItem[];

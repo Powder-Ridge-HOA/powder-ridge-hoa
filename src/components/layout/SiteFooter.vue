@@ -1,36 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useSiteStore } from '@/stores/useSiteStore';
-import { useSanity } from '@/composables/useSanity';
-import { getSocialIcon } from '@/composables/useSocialIcons';
 import SmartLink from '@/components/ui/SmartLink.vue';
 
 const site = useSiteStore();
 const year = new Date().getFullYear();
-
-const { data: socialDoc } = useSanity<{ links: { platform: string; url: string }[] }>(
-  `*[_type == "socialLinks"][0]{"links": coalesce(links, items)}`
-);
-const socialLinks = computed(() => {
-  const raw = socialDoc.value?.links || site.socialLinks;
-  return raw.map((l) => ({ ...l, platform: l.platform.toLowerCase() }));
-});
-
-const platformLabels: Record<string, string> = {
-  facebook: 'Facebook',
-  instagram: 'Instagram',
-  twitter: 'X',
-  linkedin: 'LinkedIn',
-  youtube: 'YouTube',
-  tiktok: 'TikTok',
-  github: 'GitHub',
-  pinterest: 'Pinterest',
-  threads: 'Threads',
-  bluesky: 'Bluesky',
-  mastodon: 'Mastodon',
-  nextdoor: 'Nextdoor',
-};
 </script>
 
 <template>
@@ -61,27 +35,18 @@ const platformLabels: Record<string, string> = {
           </RouterLink>
         </nav>
 
-        <!-- Copyright + Social row -->
+        <!-- Copyright + Crafted-by row -->
         <div class="bottom-bar__meta">
           <p class="bottom-bar__copyright">
             {{ site.copyrightText || `© ${year} ${site.name}. All rights reserved.` }}
           </p>
-          <div v-if="socialLinks.length" class="bottom-bar__social">
-            <a
-              v-for="link in socialLinks"
-              :key="link.platform"
-              :href="link.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="bottom-bar__social-link"
-              :aria-label="platformLabels[link.platform] || link.platform"
-            >
-              <svg v-if="getSocialIcon(link.platform)" class="bottom-bar__social-svg" viewBox="0 0 24 24" fill="currentColor">
-                <path :d="getSocialIcon(link.platform)!" />
-              </svg>
-              <span v-else class="bottom-bar__social-fallback">{{ (platformLabels[link.platform] || link.platform).charAt(0) }}</span>
-            </a>
-          </div>
+          <a
+            v-if="site.craftedBy"
+            href="https://phiferwebsolutions.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="bottom-bar__crafted"
+          >{{ site.craftedBy }}</a>
         </div>
       </div>
     </div>
@@ -194,41 +159,24 @@ const platformLabels: Record<string, string> = {
   color: #d1d5db;
 }
 
-.bottom-bar__social {
-  display: flex;
-  gap: 1.25rem;
-}
-
-.bottom-bar__social-link {
-  display: inline-flex;
-  align-items: center;
-  color: #d1d5db;
+.bottom-bar__crafted {
+  font-size: 0.8125rem;
+  color: #9ca3af;
+  font-style: italic;
+  margin-left: auto;
+  text-decoration: none;
   transition: color 0.2s ease;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
-.bottom-bar__social-link:hover {
+.bottom-bar__crafted:hover {
   color: #ffffff;
+  text-decoration: underline;
 }
 
-.bottom-bar__social-link:focus-visible {
+.bottom-bar__crafted:focus-visible {
   outline: 3px dashed rgba(255, 255, 255, 0.8);
   outline-offset: 2px;
-}
-
-.bottom-bar__social-svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.bottom-bar__social-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  font-size: 0.8125rem;
-  font-weight: 700;
 }
 
 @media (max-width: 768px) {

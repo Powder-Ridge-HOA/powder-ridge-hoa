@@ -23,6 +23,7 @@ interface SiteSettings {
   ctaFooterLabel?: string;
   ctaFooterUrl?: string;
   copyrightText?: string;
+  craftedBy?: string;
 }
 
 const { data: settings, loading: settingsLoading } = useSanity<SiteSettings>(
@@ -36,7 +37,8 @@ const { data: settings, loading: settingsLoading } = useSanity<SiteSettings>(
     ctaSubtext,
     ctaFooterLabel,
     ctaFooterUrl,
-    copyrightText
+    copyrightText,
+    craftedBy
   }`
 );
 
@@ -52,6 +54,7 @@ watch(settings, (s) => {
   if (s.ctaFooterLabel) site.ctaFooterLabel = s.ctaFooterLabel;
   if (s.ctaFooterUrl) site.ctaFooterUrl = s.ctaFooterUrl;
   if (s.copyrightText) site.copyrightText = s.copyrightText;
+  if (s.craftedBy) site.craftedBy = s.craftedBy;
 });
 
 // ── Navigation ──

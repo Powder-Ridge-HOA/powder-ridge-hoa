@@ -16,11 +16,11 @@ export default async (req: Request, _context: Context) => {
   }
 
   try {
-    const { name, email, message } = await req.json();
+    const { name, email, subject, recipient, message } = await req.json();
 
     // Validate required fields
-    if (!name || !email || !message) {
-      return new Response(JSON.stringify({ error: 'Name, email, and message are required.' }), {
+    if (!name || !email || !subject || !recipient || !message) {
+      return new Response(JSON.stringify({ error: 'Name, email, subject, recipient, and message are required.' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -38,18 +38,26 @@ export default async (req: Request, _context: Context) => {
       from: FROM_EMAIL,
       to: TO_EMAIL,
       replyTo: email,
-      subject: `New message from ${name} via ##CLIENT_DOMAIN##`,
+      subject: `[${recipient}] ${subject} — from ${name}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #0e7490; margin-bottom: 24px;">New Contact Form Submission</h2>
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
-              <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; vertical-align: top; width: 100px;">Name</td>
+              <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; vertical-align: top; width: 180px;">Name</td>
               <td style="padding: 8px 12px; color: #1f2937;">${escapeHtml(name)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; vertical-align: top;">Email</td>
               <td style="padding: 8px 12px; color: #1f2937;"><a href="mailto:${escapeHtml(email)}" style="color: #0e7490;">${escapeHtml(email)}</a></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; vertical-align: top;">Subject</td>
+              <td style="padding: 8px 12px; color: #1f2937;">${escapeHtml(subject)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; vertical-align: top;">Who are you contacting?</td>
+              <td style="padding: 8px 12px; color: #1f2937;">${escapeHtml(recipient)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 12px; font-weight: 600; color: #4b5563; vertical-align: top;">Message</td>

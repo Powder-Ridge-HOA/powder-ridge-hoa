@@ -5,6 +5,7 @@ export const useSiteStore = defineStore('site', {
   state: (): SiteConfig => ({
     name: 'Powder Ridge HOA',
     logo: '',
+    darkLogo: '',
     tagline: '',
     contactEmail: 'powderridgesecretary@gmail.com',
     contactPhone: '',
@@ -12,10 +13,11 @@ export const useSiteStore = defineStore('site', {
     ctaLabel: '',
     ctaUrl: '/contact',
     ctaHeadline: 'Ready to get started?',
-    ctaSubtext: 'Let\'s build something great together.',
+    ctaSubtext: "Let's build something great together.",
     ctaFooterLabel: '',
     ctaFooterUrl: '',
     copyrightText: '',
+    craftedBy: '',
     primaryNav: [
       { label: 'Home', to: '/' },
       { label: 'Contact', to: '/contact' },
@@ -24,9 +26,7 @@ export const useSiteStore = defineStore('site', {
       { label: 'Board Members', to: '/board-members' },
       { label: 'Board Minutes', to: '/board-minutes' },
     ],
-    footerNav: [
-,
-    ],
+    footerNav: [],
     legalNav: [
       { label: 'Privacy Policy', to: '/privacy-policy' },
       { label: 'Terms & Conditions', to: '/terms-and-conditions' },
