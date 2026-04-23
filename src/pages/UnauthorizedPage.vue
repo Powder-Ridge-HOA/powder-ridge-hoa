@@ -1,7 +1,15 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue'
 import { useAuth } from '../composables/useAuth'
 
 const { user, logout } = useAuth()
+
+useHead({
+  meta: [
+    { name: 'robots', content: 'noindex, nofollow, noarchive' },
+    { name: 'referrer', content: 'no-referrer' },
+  ],
+})
 </script>
 
 <template>

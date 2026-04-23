@@ -26,6 +26,19 @@ function getJwks() {
 
 export default async (req: Request, _context: Context) => {
   try {
+    // Diagnostic: print which env vars the function runtime sees. Shows in
+    // the `netlify dev` terminal and in the Netlify Functions live log.
+    console.log('[residents] env check', {
+      AUTH0_DOMAIN: !!AUTH0_DOMAIN,
+      AUTH0_AUDIENCE: !!AUTH0_AUDIENCE,
+      rolesClaim: ROLES_CLAIM,
+      requiredRole: REQUIRED_ROLE,
+      SANITY_PROJECT_ID: !!SANITY_PROJECT_ID,
+      SANITY_DATASET,
+      authPrefixed: Object.keys(process.env).filter((k) => k.startsWith('AUTH0_') || k.startsWith('VITE_AUTH0_')),
+      sanityPrefixed: Object.keys(process.env).filter((k) => k.includes('SANITY')),
+    });
+
     if (req.method !== 'GET') return jsonResponse({ error: 'Method not allowed' }, 405);
 
     if (!AUTH0_DOMAIN) {

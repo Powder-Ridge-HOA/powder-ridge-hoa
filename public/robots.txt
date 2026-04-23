@@ -1,5 +1,13 @@
 User-agent: *
 Allow: /
 Disallow: /.netlify/
+Disallow: /directory
+Disallow: /directory/
+Disallow: /callback
+Disallow: /callback/
+Disallow: /login
+Disallow: /login/
+Disallow: /unauthorized
+Disallow: /unauthorized/
 
 Sitemap: https://powderridgegrandmesa.com/sitemap.xml

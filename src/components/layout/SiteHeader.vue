@@ -1,19 +1,51 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RouterLink } from 'vue-router';
-import { Menu, X, Sun, Moon } from 'lucide-vue-next';
+import { Menu, X, Sun, Moon, LogOut, User } from 'lucide-vue-next';
 import { useSiteStore } from '@/stores/useSiteStore';
 import SmartLink from '@/components/ui/SmartLink.vue';
 import { useTheme } from '@/composables/useTheme';
+import { useAuth } from '@/composables/useAuth';
 
 const site = useSiteStore();
 const { theme, toggle } = useTheme();
+const { user, isAuthenticated, logout } = useAuth();
+
 const mobileOpen = ref(false);
+const userMenuOpen = ref(false);
+const userMenuRef = ref<HTMLElement | null>(null);
 
 const currentLogo = computed(() => {
   if (theme.value === 'dark' && site.darkLogo) return site.darkLogo;
   return site.logo;
 });
+
+const userLabel = computed(() => {
+  const u = user.value;
+  if (!u) return '';
+  return (u.name as string) || (u.email as string) || 'Account';
+});
+
+const userInitial = computed(() => {
+  const label = userLabel.value;
+  return label ? label.charAt(0).toUpperCase() : '?';
+});
+
+function handleLogout() {
+  userMenuOpen.value = false;
+  logout();
+}
+
+function onDocumentClick(e: MouseEvent) {
+  if (!userMenuOpen.value) return;
+  const target = e.target as Node | null;
+  if (userMenuRef.value && target && !userMenuRef.value.contains(target)) {
+    userMenuOpen.value = false;
+  }
+}
+
+onMounted(() => document.addEventListener('click', onDocumentClick));
+onUnmounted(() => document.removeEventListener('click', onDocumentClick));
 </script>
 
 <template>
@@ -46,9 +78,20 @@ const currentLogo = computed(() => {
         >
           {{ site.ctaLabel }}
         </SmartLink>
+
+        <!-- Mobile logout -->
+        <button
+          v-if="isAuthenticated"
+          type="button"
+          class="site-header__mobile-logout"
+          @click="handleLogout"
+        >
+          <LogOut :size="16" />
+          <span>Log Out</span>
+        </button>
       </nav>
 
-      <!-- Right: CTA + theme toggle + hamburger -->
+      <!-- Right: CTA + user menu + theme toggle + hamburger -->
       <div class="site-header__actions">
         <SmartLink
           v-if="site.ctaLabel"
@@ -57,6 +100,35 @@ const currentLogo = computed(() => {
         >
           {{ site.ctaLabel }}
         </SmartLink>
+
+        <!-- User menu (only when authenticated) -->
+        <div v-if="isAuthenticated" ref="userMenuRef" class="site-header__user">
+          <button
+            type="button"
+            class="site-header__user-button"
+            :aria-label="`Signed in as ${userLabel}. Open account menu.`"
+            :aria-expanded="userMenuOpen"
+            aria-haspopup="menu"
+            @click="userMenuOpen = !userMenuOpen"
+          >
+            <span class="site-header__user-avatar" aria-hidden="true">{{ userInitial }}</span>
+          </button>
+          <div v-if="userMenuOpen" class="site-header__user-menu" role="menu">
+            <div class="site-header__user-label">
+              <User :size="14" />
+              <span>{{ userLabel }}</span>
+            </div>
+            <button
+              type="button"
+              class="site-header__user-item"
+              role="menuitem"
+              @click="handleLogout"
+            >
+              <LogOut :size="16" />
+              <span>Log Out</span>
+            </button>
+          </div>
+        </div>
 
         <button
           class="site-header__theme-toggle"
@@ -121,10 +193,6 @@ const currentLogo = computed(() => {
   object-fit: contain;
 }
 
-/* Dark-theme contrast: invert lightness, then rotate hues 180° back so
-   brand colors stay recognizable while dark fills become light. Works for
-   multi-color SVGs without needing a second upload. Applied instantly so the
-   logo tracks the theme toggle without a visible delay. */
 [data-theme="dark"] .site-header__logo-img {
   filter: invert(1) hue-rotate(180deg);
 }
@@ -178,6 +246,94 @@ const currentLogo = computed(() => {
 }
 
 .site-header__cta--mobile {
+  display: none;
+}
+
+/* User menu */
+.site-header__user {
+  position: relative;
+}
+
+.site-header__user-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+}
+
+.site-header__user-button:focus-visible {
+  outline: 3px dashed var(--color-primary);
+  outline-offset: 2px;
+}
+
+.site-header__user-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-weight: 700;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.site-header__user-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 16rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 0.5rem;
+  z-index: 60;
+}
+
+.site-header__user-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0.25rem;
+  word-break: break-all;
+}
+
+.site-header__user-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: calc(var(--border-radius) - 2px);
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.site-header__user-item:hover {
+  background-color: var(--color-bg-hover, var(--color-border));
+}
+
+.site-header__user-item:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.site-header__mobile-logout {
   display: none;
 }
 
@@ -261,6 +417,23 @@ const currentLogo = computed(() => {
 
   .site-header__link {
     padding: 0.5rem 0;
+  }
+
+  .site-header__mobile-logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.625rem 1rem;
+    background-color: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    justify-content: center;
+    width: 100%;
   }
 }
 </style>

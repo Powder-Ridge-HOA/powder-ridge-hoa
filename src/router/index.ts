@@ -125,8 +125,7 @@ const router = createRouter({
   },
 });
 
-router.beforeEach(async (to, from) => {
-  console.log('[router.beforeEach]', { toPath: to.fullPath, fromPath: from.fullPath, requiresAuth: !!to.meta.requiresAuth, origin: window.location.origin });
+router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth) return true;
 
   const { isAuthenticated, isLoading, user, loginWithRedirect } = useAuth0();
@@ -139,32 +138,17 @@ router.beforeEach(async (to, from) => {
     });
   }
 
-  console.log('[router.beforeEach] auth state', {
-    isAuthenticated: isAuthenticated.value,
-    roles: user.value?.[ROLES_CLAIM],
-    memberCheck: user.value ? checkMember(user.value) : null,
-  });
-
   if (!isAuthenticated.value) {
-    try {
-      sessionStorage.setItem('auth:targetUrl', to.fullPath);
-      console.log('[router.beforeEach] stashed targetUrl on origin', window.location.origin, '->', to.fullPath);
-    } catch (e) { console.warn('[router.beforeEach] sessionStorage failed', e); }
+    try { sessionStorage.setItem('auth:targetUrl', to.fullPath); } catch { /* empty */ }
     loginWithRedirect({ appState: { targetUrl: to.fullPath } });
     return false;
   }
 
   if (!checkMember(user.value || {})) {
-    console.log('[router.beforeEach] not a member, redirecting to /unauthorized');
     return { name: 'Unauthorized' };
   }
 
-  console.log('[router.beforeEach] allowing through to', to.fullPath);
   return true;
-});
-
-router.afterEach((to, from) => {
-  console.log('[router.afterEach] landed on', to.fullPath, '(from', from.fullPath, ') origin=', window.location.origin);
 });
 
 export default router;

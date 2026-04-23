@@ -1,7 +1,17 @@
 <script setup>
+import { useHead } from '@unhead/vue';
 import { useSanity } from '@/composables/useSanity';
 import { sectionMap, pageQuery } from '@/composables/useSections';
 import { useRevealObserver } from '@/composables/useRevealObserver';
+
+// Private / auth-gated page: keep it out of search indexes and referrer leaks.
+useHead({
+  meta: [
+    { name: 'robots', content: 'noindex, nofollow, noarchive' },
+    { name: 'referrer', content: 'no-referrer' },
+  ],
+});
+
 const { data: page } = useSanity(pageQuery('/directory'));
 useRevealObserver(page);
 </script>
