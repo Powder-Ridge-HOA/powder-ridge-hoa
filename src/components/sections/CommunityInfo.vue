@@ -55,8 +55,16 @@ const items = computed(() => props.section?.items || []);
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Drop the bottom border on the final row(s) so the grid doesn't end with a stray line. */
+/* On larger screens, center the label/value pairs within each grid cell so
+   the two-column grid reads as visually balanced instead of "two left-aligned
+   blocks pushed to the page edges." Mobile keeps left alignment since
+   single-column lists scan more naturally that way. */
 @media (min-width: 768px) {
+  .community-info__item {
+    text-align: center;
+  }
+
+  /* Drop the bottom border on the final row(s) so the grid doesn't end with a stray line. */
   .community-info__item:nth-last-child(-n + 2):nth-child(odd),
   .community-info__item:nth-last-child(-n + 1):nth-child(even) {
     border-bottom: none;
