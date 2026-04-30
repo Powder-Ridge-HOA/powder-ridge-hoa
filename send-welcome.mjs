@@ -3,39 +3,65 @@
 // ----------------------------------------------------------------------------
 // Sends branded password-set / welcome emails to Powder Ridge HOA residents.
 //
-// Uses the Auth0 Management API to create one-time password-change tickets
-// (no Auth0 email sent), then delivers a branded email via Resend with the
-// ticket URL embedded. Sidesteps the Auth0 Free-tier email template lockout.
+// Recipients are fetched live from Auth0 (Username-Password connection),
+// minus the admin-only addresses below. Each recipient gets a one-time
+// password-change ticket from the Auth0 Management API, embedded in the
+// branded HTML template, delivered via Resend.
 //
-// Usage:
-//   AUTH0_DOMAIN=dev-re6yi2zl62edxojz.us.auth0.com \
-//   AUTH0_MGMT_TOKEN=<24h-token-from-Auth0-API-Explorer> \
-//   RESEND_API_KEY=<your-resend-api-key> \
-//   node send-welcome.mjs --test
+// USAGE:
+//   node send-welcome.mjs              # dry-run: list who would receive
+//   node send-welcome.mjs --test       # send only to TEST_EMAIL (eric@…)
+//   node send-welcome.mjs --live       # send to every recipient
 //
-//   # then, if test looked good:
-//   AUTH0_DOMAIN=... AUTH0_MGMT_TOKEN=... RESEND_API_KEY=... \
-//   node send-welcome.mjs --live
+// REQUIRED ENV (auto-loaded from ../dashboard/.env then ../frontend/.env):
+//   AUTH0_DOMAIN
+//   RESEND_API_KEY
+//   AUTH0_MGMT_CLIENT_ID + AUTH0_MGMT_CLIENT_SECRET   (M2M creds)
+//   OR AUTH0_MGMT_TOKEN                                (24h dashboard token)
 //
-// Optional env overrides:
-//   FROM_EMAIL     sender (default: "Powder Ridge HOA <welcome@powderridgegrandmesa.com>")
-//   REPLY_TO       reply-to (default: "powderridgesecretary@gmail.com")
-//   REDIRECT_URL   where residents land after setting password
-//                  (default: "https://powderridgegrandmesa.com/directory")
-//   TEST_EMAIL     email used by --test mode (default: "eric@ericphiferllc.com")
-//
-// Node 18+ required (uses global fetch). No npm install needed.
+// OPTIONAL ENV:
+//   TEST_EMAIL (default eric@ericphiferllc.com)
+//   FROM_EMAIL (default 'Powder Ridge HOA <welcome@powderridgegrandmesa.com>')
+//   REPLY_TO   (default powderridgesecretary@gmail.com)
+//   REDIRECT_URL (default https://powderridgegrandmesa.com/directory)
 // ----------------------------------------------------------------------------
 
+import { readFileSync } from 'node:fs';
+
+// Load env from sibling .env files unless already set in shell.
+// frontend/.env wins because the M2M app authorized for create:user_tickets
+// (the scope this script needs) lives there. The dashboard's M2M is a
+// different app with different scopes and would silently fail here.
+const here = new URL('./', import.meta.url);
+for (const file of ['./.env', '../dashboard/.env']) {
+  try {
+    const text = readFileSync(new URL(file, here), 'utf8');
+    for (const line of text.split('\n')) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/i);
+      if (!m) continue;
+      if (!process.env[m[1]]) process.env[m[1]] = m[2];
+    }
+  } catch { /* ok if missing */ }
+}
+
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
-const AUTH0_MGMT_TOKEN = process.env.AUTH0_MGMT_TOKEN;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Powder Ridge HOA <welcome@powderridgegrandmesa.com>';
 const REPLY_TO = process.env.REPLY_TO || 'powderridgesecretary@gmail.com';
 const REDIRECT_URL = process.env.REDIRECT_URL || 'https://powderridgegrandmesa.com/directory';
 const TEST_EMAIL = process.env.TEST_EMAIL || 'eric@ericphiferllc.com';
 const TICKET_TTL_SEC = 604800; // 7 days
-const SEND_DELAY_MS = 600;     // 1.6 rps, safely under Auth0 + Resend limits
+const SEND_DELAY_MS = 700;     // ~1.4 rps; safely under Auth0 + Resend limits
+
+// Admins we deliberately do NOT send a "set your password" email to.
+// Google-OAuth admins have no password to set; the secretary account
+// was just created and the President will be told in person; the
+// generic prho admin email isn't a real user inbox.
+const SKIP_ADMINS = new Set([
+  'powderridgepresident@gmail.com',
+  'powderridgesecretary@gmail.com',
+  'prhoageneral@gmail.com',
+]);
 
 const args = process.argv.slice(2);
 const TEST_MODE = args.includes('--test');
@@ -43,93 +69,106 @@ const LIVE_MODE = args.includes('--live');
 
 const missing = [];
 if (!AUTH0_DOMAIN) missing.push('AUTH0_DOMAIN');
-if (!AUTH0_MGMT_TOKEN) missing.push('AUTH0_MGMT_TOKEN');
 if (!RESEND_API_KEY) missing.push('RESEND_API_KEY');
 if (missing.length) {
   console.error(`Missing required env var(s): ${missing.join(', ')}`);
   process.exit(1);
 }
-if (!TEST_MODE && !LIVE_MODE) {
-  console.error('Specify --test (sends only to TEST_EMAIL) or --live (sends to all residents).');
-  process.exit(1);
-}
 
-// Whitelist deduped + lowercased. eric@ericphiferllc.com used as the default
-// TEST_EMAIL and also included here so --live covers every Auth0 account.
-const EMAILS = [
-  'frontdesk@huffco.com',
-  'andrewwarrenfoster@gmail.com',
-  'dinopeds@aol.com',
-  'ivie_shelli@hotmail.com',
-  'fotus@aol.com',
-  'wood.76@gmail.com',
-  'meagan.mccormick@gmail.com',
-  'dhoops2004@yahoo.com',
-  'brekke@tds.net',
-  'j.lummis@me.com',
-  'yellowquail@gmail.com',
-  'jasonacastor@gmail.com',
-  'soderberg777@gmail.com',
-  'cesanderson81@gmail.com',
-  'kate.morlan@gmail.com',
-  'lucylarson8@gmail.com',
-  'peggypat56@gmail.com',
-  'merrileeclaverie@gmail.com',
-  'parenteaurealtor@gmail.com',
-  'pbhoops353@gmail.com',
-  'triciacroman@msn.com',
-  'jeremysanderson@live.com',
-  'shay.boe@gmail.com',
-  'rjprins@aol.com',
-  'lowinemaker@gmail.com',
-  'erica@rpm2017.com',
-  'kenapplebee@yahoo.com',
-  'csitomlee@aol.com',
-  'haleaah@bresnan.net',
-  'tysonblack@live.com',
-  'popparch@aol.com',
-  'laurenbrowni3@yahoo.com',
-  'zg@flatirondevelopmentco.com',
-  'eric@ericphiferllc.com',
-  'prhoageneral@gmail.com',
-  'romanfamilydc@yahoo.com',
-];
+// ---- Auth0 token ----------------------------------------------------------
 
-// ---- Auth0 API ------------------------------------------------------------
-
-async function getUserIdByEmail(email) {
-  const url = `https://${AUTH0_DOMAIN}/api/v2/users-by-email?email=${encodeURIComponent(email)}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${AUTH0_MGMT_TOKEN}` } });
-  if (!res.ok) throw new Error(`users-by-email ${res.status}: ${await res.text()}`);
-  const users = await res.json();
-  if (!users.length) return null;
-  // Prefer a Username-Password user if multiple identities exist for the email.
-  const preferred = users.find((u) =>
-    (u.identities || []).some((i) => i.connection === 'Username-Password-Authentication'),
-  );
-  return (preferred || users[0]).user_id;
-}
-
-async function createPasswordChangeTicket(userId) {
-  const res = await fetch(`https://${AUTH0_DOMAIN}/api/v2/tickets/password-change`, {
+// Prefer M2M client credentials (auto-refreshable) over a manually-pasted
+// AUTH0_MGMT_TOKEN, which is typically a 24h dashboard token that expires
+// silently and surfaces as 401 mid-run.
+let mgmtToken = null;
+async function getToken() {
+  if (mgmtToken) return mgmtToken;
+  const id = process.env.AUTH0_MGMT_CLIENT_ID;
+  const secret = process.env.AUTH0_MGMT_CLIENT_SECRET;
+  if (!id || !secret) {
+    if (process.env.AUTH0_MGMT_TOKEN) {
+      mgmtToken = process.env.AUTH0_MGMT_TOKEN;
+      return mgmtToken;
+    }
+    throw new Error(
+      'Need AUTH0_MGMT_CLIENT_ID + AUTH0_MGMT_CLIENT_SECRET (preferred), OR AUTH0_MGMT_TOKEN',
+    );
+  }
+  const r = await fetch(`https://${AUTH0_DOMAIN}/oauth/token`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${AUTH0_MGMT_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      user_id: userId,
-      result_url: REDIRECT_URL,
-      ttl_sec: TICKET_TTL_SEC,
-      mark_email_as_verified: true,
+      client_id: id,
+      client_secret: secret,
+      audience: `https://${AUTH0_DOMAIN}/api/v2/`,
+      grant_type: 'client_credentials',
     }),
   });
-  if (!res.ok) throw new Error(`password-change ticket ${res.status}: ${await res.text()}`);
-  const body = await res.json();
-  return body.ticket;
+  const j = await r.json();
+  if (!r.ok || !j.access_token) {
+    throw new Error(`Token exchange failed: ${JSON.stringify(j)}`);
+  }
+  mgmtToken = j.access_token;
+  return mgmtToken;
 }
 
-// ---- Email template --------------------------------------------------------
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function api(method, path, body, retries = 3) {
+  const token = await getToken();
+  await sleep(SEND_DELAY_MS);
+  const r = await fetch(`https://${AUTH0_DOMAIN}${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (r.status === 429 && retries > 0) {
+    const wait = Math.max(2000, Number(r.headers.get('x-ratelimit-reset')) * 1000 - Date.now() || 2000);
+    await sleep(wait);
+    return api(method, path, body, retries - 1);
+  }
+  const text = await r.text();
+  let json;
+  try { json = text ? JSON.parse(text) : null; } catch { json = text; }
+  if (!r.ok) {
+    throw new Error(`${method} ${path} → ${r.status}: ${typeof json === 'string' ? json : JSON.stringify(json)}`);
+  }
+  return json;
+}
+
+// ---- Recipient discovery --------------------------------------------------
+
+async function fetchRecipients() {
+  const recipients = [];
+  let page = 0;
+  while (true) {
+    const u = `/api/v2/users?search_engine=v3&q=${encodeURIComponent('identities.connection:"Username-Password-Authentication"')}&per_page=100&page=${page}`;
+    const batch = await api('GET', u);
+    for (const u of batch) {
+      const email = String(u.email || '').toLowerCase().trim();
+      if (!email) continue;
+      if (SKIP_ADMINS.has(email)) continue;
+      recipients.push({ user_id: u.user_id, email });
+    }
+    if (batch.length < 100) break;
+    page++;
+    if (page > 10) break;
+  }
+  recipients.sort((a, b) => a.email.localeCompare(b.email));
+  return recipients;
+}
+
+// ---- Ticket + email helpers ----------------------------------------------
+
+async function createTicket(userId) {
+  const body = await api('POST', '/api/v2/tickets/password-change', {
+    user_id: userId,
+    result_url: REDIRECT_URL,
+    ttl_sec: TICKET_TTL_SEC,
+    mark_email_as_verified: true,
+  });
+  return body.ticket;
+}
 
 function renderEmail(ticketUrl, ttlDays) {
   return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -157,7 +196,9 @@ function renderEmail(ticketUrl, ttlDays) {
                 The Powder Ridge HOA has launched a new website, and an account has been created for you using this email address.
               </p>
               <p style="margin:0 0 28px; color:#374151; font-size:15px; line-height:1.6;">
-                To set your password and access the resident directory, click the button below.
+                To set your password and access the resident directory, click the button below. Once your password is set, visit
+                <a href="https://powderridgegrandmesa.com/directory" style="color:#016b37; text-decoration:underline;">powderridgegrandmesa.com/directory</a>
+                and log in with your email and new password.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
                 <tr>
@@ -206,8 +247,11 @@ function renderPlainText(ticketUrl, ttlDays) {
     '',
     ticketUrl,
     '',
-    `This link expires in ${ttlDays} days. If it expires before you use it,`,
-    'reply to this email and the Secretary will resend a new one.',
+    'Once your password is set, log in at:',
+    '  https://powderridgegrandmesa.com/directory',
+    '',
+    `This password-set link expires in ${ttlDays} days. If it expires before`,
+    'you use it, reply to this email and the Secretary will resend.',
     '',
     'Questions? powderridgesecretary@gmail.com',
     '',
@@ -215,8 +259,6 @@ function renderPlainText(ticketUrl, ttlDays) {
     'P.O. Box 4574, Grand Junction, CO 81502',
   ].join('\n');
 }
-
-// ---- Resend ---------------------------------------------------------------
 
 async function sendEmail(to, ticketUrl) {
   const ttlDays = Math.round(TICKET_TTL_SEC / 86400);
@@ -242,39 +284,57 @@ async function sendEmail(to, ticketUrl) {
 
 // ---- Main -----------------------------------------------------------------
 
-const targets = TEST_MODE ? [TEST_EMAIL] : EMAILS;
-const mode = TEST_MODE ? 'TEST' : 'LIVE';
+async function main() {
+  console.log(`Resolving recipient list from Auth0 (excluding ${SKIP_ADMINS.size} admin emails)...`);
+  let recipients = await fetchRecipients();
 
-console.log(`Mode: ${mode}`);
-console.log(`From: ${FROM_EMAIL}`);
-console.log(`Redirect URL: ${REDIRECT_URL}`);
-console.log(`Recipients: ${targets.length}`);
-console.log('');
-
-let okCount = 0;
-let failCount = 0;
-
-for (let i = 0; i < targets.length; i++) {
-  const email = targets[i];
-  process.stdout.write(`[${String(i + 1).padStart(2)}/${targets.length}] ${email.padEnd(42)} ... `);
-  try {
-    const userId = await getUserIdByEmail(email);
-    if (!userId) {
-      console.log('SKIP (no Auth0 user with this email)');
-      failCount++;
-      continue;
+  if (TEST_MODE) {
+    recipients = recipients.filter((r) => r.email === TEST_EMAIL.toLowerCase());
+    if (!recipients.length) {
+      // Fall back to a synthetic record so --test still works pre-account
+      const userId = (await api('GET', `/api/v2/users-by-email?email=${encodeURIComponent(TEST_EMAIL)}`))?.[0]?.user_id;
+      if (!userId) {
+        console.error(`TEST_EMAIL ${TEST_EMAIL} not found in Auth0.`);
+        process.exit(1);
+      }
+      recipients = [{ user_id: userId, email: TEST_EMAIL }];
     }
-    const ticket = await createPasswordChangeTicket(userId);
-    const msgId = await sendEmail(email, ticket);
-    console.log(`OK  (resend id ${msgId})`);
-    okCount++;
-  } catch (err) {
-    console.log(`FAIL: ${err.message}`);
-    failCount++;
   }
-  if (i < targets.length - 1) await new Promise((r) => setTimeout(r, SEND_DELAY_MS));
+
+  const mode = TEST_MODE ? 'TEST' : LIVE_MODE ? 'LIVE' : 'DRY-RUN';
+  console.log('');
+  console.log(`Mode: ${mode}`);
+  console.log(`From: ${FROM_EMAIL}`);
+  console.log(`Reply-To: ${REPLY_TO}`);
+  console.log(`Redirect URL after password set: ${REDIRECT_URL}`);
+  console.log(`Recipients: ${recipients.length}`);
+  console.log('');
+  for (const r of recipients) console.log('  ' + r.email);
+  console.log('');
+
+  if (!TEST_MODE && !LIVE_MODE) {
+    console.log('Dry-run only. Re-run with --live to send, or --test to send to TEST_EMAIL.');
+    return;
+  }
+
+  let okCount = 0;
+  let failCount = 0;
+  for (let i = 0; i < recipients.length; i++) {
+    const { user_id, email } = recipients[i];
+    process.stdout.write(`[${String(i + 1).padStart(2)}/${recipients.length}] ${email.padEnd(42)} ... `);
+    try {
+      const ticket = await createTicket(user_id);
+      const msgId = await sendEmail(email, ticket);
+      console.log(`OK  (resend id ${msgId})`);
+      okCount++;
+    } catch (err) {
+      console.log(`FAIL: ${err.message}`);
+      failCount++;
+    }
+  }
+  console.log('');
+  console.log(`Done. ${okCount} sent, ${failCount} failed.`);
+  process.exit(failCount === 0 ? 0 : 2);
 }
 
-console.log('');
-console.log(`Done. ${okCount} sent, ${failCount} failed.`);
-process.exit(failCount === 0 ? 0 : 2);
+main().catch((e) => { console.error(e); process.exit(1); });

@@ -8,11 +8,11 @@ const items = computed(() => props.section?.items || []);
 
 <template>
   <section class="reveal py-16 px-6 bg-[var(--color-bg)]">
-    <div v-if="section?.heading" class="max-w-5xl mx-auto mb-10">
+    <div v-if="section?.heading" class="max-w-3xl mx-auto mb-10">
       <h2 class="text-3xl font-bold text-[var(--color-text)] text-center">{{ section.heading }}</h2>
     </div>
 
-    <ul v-if="items.length" class="community-info max-w-5xl mx-auto">
+    <ul v-if="items.length" class="community-info max-w-3xl mx-auto">
       <li
         v-for="(item, i) in items"
         :key="i"

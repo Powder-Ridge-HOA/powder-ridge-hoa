@@ -84,8 +84,8 @@ const formatPhone = (raw) => {
 </script>
 
 <template>
-  <section class="reveal py-16 px-6 bg-[var(--color-bg)]">
-    <div v-if="section?.heading || section?.subheading" class="max-w-5xl mx-auto text-center mb-8">
+  <section class="reveal py-16 px-4 sm:px-6 bg-[var(--color-bg)]">
+    <div v-if="section?.heading || section?.subheading" class="max-w-7xl mx-auto text-center mb-8">
       <h2 v-if="section?.heading" class="text-3xl font-bold text-[var(--color-text)]">{{ section.heading }}</h2>
       <p v-if="section?.subheading" class="text-[var(--color-text-secondary)] mt-2">{{ section.subheading }}</p>
     </div>
@@ -94,7 +94,7 @@ const formatPhone = (raw) => {
     <p v-else-if="error" class="text-center text-red-600">{{ error }}</p>
 
     <template v-else>
-      <div class="max-w-5xl mx-auto mb-6">
+      <div class="max-w-7xl mx-auto mb-6">
         <input
           v-model="query"
           type="search"
@@ -103,55 +103,55 @@ const formatPhone = (raw) => {
           aria-label="Search residents"
         />
       </div>
-      <div v-if="filtered.length" class="max-w-5xl mx-auto overflow-x-auto">
+      <div v-if="filtered.length" class="max-w-7xl mx-auto overflow-x-auto">
         <table class="w-full text-sm bg-[var(--color-surface)] rounded border border-[var(--color-border)]">
           <thead>
             <tr class="text-left text-[var(--color-text-secondary)] border-b border-[var(--color-border)]">
-              <th class="px-4 py-2 font-medium">Name</th>
-              <th class="px-4 py-2 font-medium">Address</th>
-              <th class="px-4 py-2 font-medium">Email</th>
-              <th class="px-4 py-2 font-medium">Phone</th>
-              <th class="px-4 py-2 font-medium">Organization</th>
+              <th class="px-5 py-3 font-medium">Name</th>
+              <th class="px-5 py-3 font-medium whitespace-nowrap">Address</th>
+              <th class="px-5 py-3 font-medium">Email</th>
+              <th class="px-5 py-3 font-medium whitespace-nowrap">Phone</th>
+              <th class="px-5 py-3 font-medium">Organization</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="r in filtered" :key="r._id" class="border-b border-[var(--color-border)] last:border-0 align-top">
-              <td class="px-4 py-2 text-[var(--color-text)]">
+              <td class="px-5 py-3 text-[var(--color-text)]">
                 <div>{{ displayName(r) }}</div>
                 <div
                   v-for="(c, i) in (r.additionalContacts || [])"
                   :key="`name-${i}`"
-                  class="text-xs text-[var(--color-text-secondary)] mt-1"
+                  class="text-xs text-[var(--color-text-secondary)] mt-1.5"
                 >
                   {{ c.name || '—' }}
                 </div>
               </td>
-              <td class="px-4 py-2 text-[var(--color-text-secondary)]">{{ r.address }}</td>
-              <td class="px-4 py-2">
-                <div v-if="r.email">
+              <td class="px-5 py-3 text-[var(--color-text-secondary)] whitespace-nowrap">{{ r.address }}</td>
+              <td class="px-5 py-3">
+                <div v-if="r.email" class="break-all">
                   <a :href="`mailto:${r.email}`" class="text-[var(--color-primary)] hover:underline">{{ r.email }}</a>
                 </div>
                 <div
                   v-for="(c, i) in (r.additionalContacts || [])"
                   :key="`email-${i}`"
-                  class="text-xs mt-1"
+                  class="text-xs mt-1.5 break-all"
                 >
                   <a v-if="c.email" :href="`mailto:${c.email}`" class="text-[var(--color-primary)] hover:underline">{{ c.email }}</a>
                 </div>
               </td>
-              <td class="px-4 py-2">
+              <td class="px-5 py-3 whitespace-nowrap">
                 <div v-if="r.phone">
                   <a :href="`tel:${r.phone}`" class="text-[var(--color-primary)] hover:underline">{{ formatPhone(r.phone) }}</a>
                 </div>
                 <div
                   v-for="(c, i) in (r.additionalContacts || [])"
                   :key="`phone-${i}`"
-                  class="text-xs mt-1"
+                  class="text-xs mt-1.5"
                 >
                   <a v-if="c.phone" :href="`tel:${c.phone}`" class="text-[var(--color-primary)] hover:underline">{{ formatPhone(c.phone) }}</a>
                 </div>
               </td>
-              <td class="px-4 py-2 text-[var(--color-text-secondary)]">{{ r.organization }}</td>
+              <td class="px-5 py-3 text-[var(--color-text-secondary)]">{{ r.organization }}</td>
             </tr>
           </tbody>
         </table>

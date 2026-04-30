@@ -19,6 +19,7 @@ import ResidentDirectory from '@/components/sections/ResidentDirectory.vue'
 import FaqList from '@/components/sections/FaqList.vue'
 import CommitteePanel from '@/components/sections/CommitteePanel.vue'
 import CommunityInfo from '@/components/sections/CommunityInfo.vue'
+import MediaImage from '@/components/sections/MediaImage.vue'
 
 /** Maps section _type (from Sanity) to Vue components */
 export const sectionMap: Record<string, Component> = {
@@ -42,6 +43,7 @@ export const sectionMap: Record<string, Component> = {
   faqList: FaqList,
   committeePanel: CommitteePanel,
   communityInfo: CommunityInfo,
+  mediaImage: MediaImage,
 }
 
 /** Section-type projections that pull in collection data via GROQ */
