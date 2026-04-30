@@ -1,7 +1,46 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, h } from 'vue';
 import { PortableText } from '@portabletext/vue';
 import { useCollection } from '@/composables/useCollection';
+
+// Custom render map for board-minutes prose so paragraphs, lists, bold,
+// links, and headings actually style instead of dumping unstyled HTML.
+// (We don't ship Tailwind Typography plugin, so `prose` does nothing.)
+const minutesComponents = {
+  block: {
+    normal: (_, { slots }) => h('p', { class: 'mb-3 last:mb-0 leading-relaxed' }, slots.default?.()),
+    h1: (_, { slots }) => h('h3', { class: 'text-lg font-semibold mt-4 mb-2 text-[var(--color-text)]' }, slots.default?.()),
+    h2: (_, { slots }) => h('h4', { class: 'text-base font-semibold mt-3 mb-2 text-[var(--color-text)]' }, slots.default?.()),
+    h3: (_, { slots }) => h('h5', { class: 'text-sm font-semibold mt-3 mb-1 text-[var(--color-text)]' }, slots.default?.()),
+    blockquote: (_, { slots }) => h('blockquote', { class: 'border-l-4 border-[var(--color-border)] pl-4 italic my-3 text-[var(--color-text-secondary)]' }, slots.default?.()),
+  },
+  list: {
+    bullet: (_, { slots }) => h('ul', { class: 'list-disc pl-6 mb-3 space-y-1 marker:text-[var(--color-text-secondary)]' }, slots.default?.()),
+    number: (_, { slots }) => h('ol', { class: 'list-decimal pl-6 mb-3 space-y-1 marker:text-[var(--color-text-secondary)]' }, slots.default?.()),
+  },
+  listItem: {
+    bullet: (_, { slots }) => h('li', { class: 'leading-relaxed' }, slots.default?.()),
+    number: (_, { slots }) => h('li', { class: 'leading-relaxed' }, slots.default?.()),
+  },
+  marks: {
+    strong: (_, { slots }) => h('strong', { class: 'font-semibold text-[var(--color-text)]' }, slots.default?.()),
+    em: (_, { slots }) => h('em', { class: 'italic' }, slots.default?.()),
+    underline: (_, { slots }) => h('span', { class: 'underline' }, slots.default?.()),
+    link: (props, { slots }) => {
+      const href = props?.value?.href || '#';
+      const external = /^https?:/i.test(href);
+      return h(
+        'a',
+        {
+          href,
+          class: 'text-[var(--color-primary)] underline',
+          ...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+        },
+        slots.default?.(),
+      );
+    },
+  },
+};
 const props = defineProps({ section: { type: Object, default: null } });
 const { data: minutes, loading, error } = useCollection(
   `*[_type == "boardMinutes"] | order(meetingStart desc){
@@ -53,14 +92,14 @@ const formatMoney = (cents) => {
         <div v-if="open.has(m._id)" class="px-4 pb-4 space-y-6 text-sm text-[var(--color-text)]">
           <div v-if="m.oldBusiness?.length">
             <h3 class="font-semibold mb-2">Old Business</h3>
-            <div class="prose prose-sm max-w-none text-[var(--color-text-secondary)]">
-              <PortableText :value="m.oldBusiness" />
+            <div class="text-[var(--color-text-secondary)] max-w-none">
+              <PortableText :value="m.oldBusiness" :components="minutesComponents" />
             </div>
           </div>
           <div v-if="m.newBusiness?.length">
             <h3 class="font-semibold mb-2">New Business</h3>
-            <div class="prose prose-sm max-w-none text-[var(--color-text-secondary)]">
-              <PortableText :value="m.newBusiness" />
+            <div class="text-[var(--color-text-secondary)] max-w-none">
+              <PortableText :value="m.newBusiness" :components="minutesComponents" />
             </div>
           </div>
           <div v-if="m.treasurersReport" class="border-t border-[var(--color-border)] pt-4">

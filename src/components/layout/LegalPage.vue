@@ -57,7 +57,7 @@ const portableComponents = {
     </div>
 
     <template v-else-if="page">
-      <h1 class="text-4xl font-bold mb-6">{{ page.title }}</h1>
+      <h1 class="text-3xl sm:text-4xl font-bold mb-6 break-words">{{ page.title }}</h1>
       <div class="legal-content max-w-3xl">
         <p v-if="page.lastUpdated" class="mb-6"><strong>Last updated:</strong> {{ new Date(page.lastUpdated).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}</p>
         <PortableText v-if="page.body" :value="page.body" :components="portableComponents" />
@@ -72,3 +72,25 @@ const portableComponents = {
     </template>
   </main>
 </template>
+
+<style scoped>
+.page {
+  /* Belt: long URLs / tokens in privacy policy etc. break instead of pushing
+     the page beyond viewport width on mobile. */
+  overflow-x: hidden;
+}
+
+.legal-content {
+  /* Suspenders: any inline content (URLs, code spans, long words) wraps. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.legal-content :deep(pre),
+.legal-content :deep(table) {
+  /* If a Sanity portable-text block ever includes pre/table, allow internal
+     horizontal scroll on that one element instead of the whole page. */
+  max-width: 100%;
+  overflow-x: auto;
+}
+</style>
