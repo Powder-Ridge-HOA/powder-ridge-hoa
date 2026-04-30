@@ -73,7 +73,8 @@ export default async (req: Request, _context: Context) => {
     }
 
     const query = `*[_type == "resident"] | order(lastname asc){
-      _id, firstname, lastname, nickname, address, email, phone, organization
+      _id, firstname, lastname, nickname, address, email, phone, organization,
+      "additionalContacts": additionalContacts[]{ name, email, phone }
     }`;
     const url = new URL(`https://${SANITY_PROJECT_ID}.api.sanity.io/v${SANITY_API_VERSION}/data/query/${SANITY_DATASET}`);
     url.searchParams.set('query', query);
