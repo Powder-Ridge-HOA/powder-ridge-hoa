@@ -39,7 +39,10 @@ const items = computed(() => props.section?.items || []);
   grid-template-columns: 1fr;
   gap: 0;
   padding: 0;
-  margin: 0;
+  /* Zero top/bottom only — left/right are controlled by Tailwind's mx-auto
+     utility on the <ul>, which centers the grid within max-w-3xl. Using the
+     `margin` shorthand here clobbered mx-auto and pushed the grid left. */
+  margin-block: 0;
 }
 
 @media (min-width: 768px) {
