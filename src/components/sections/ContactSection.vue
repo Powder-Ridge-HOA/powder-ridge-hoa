@@ -4,7 +4,7 @@ import { useSiteStore } from '@/stores/useSiteStore';
 defineProps({ section: { type: Object, default: null } });
 const site = useSiteStore();
 const contactForm = ref({ name: '', email: '', subject: '', recipient: 'Secretary', message: '' });
-const recipientOptions = ['President', 'Secretary', 'Vice President', 'Treasurer', 'Committee Chairman'];
+const recipientOptions = ['President', 'Secretary', 'Vice President', 'Treasurer', 'Design Review Committee'];
 const contactSent = ref(false);
 const contactError = ref('');
 const submitting = ref(false);
@@ -89,7 +89,7 @@ function formatPhone(raw) {
           </div>
           <div>
             <label for="contact-recipient" class="block text-[0.8125rem] font-medium text-[var(--color-text-secondary)] mb-1">Who are you contacting? <span class="text-red-400" aria-hidden="true">*</span></label>
-            <select id="contact-recipient" v-model="contactForm.recipient" aria-required="true" :aria-describedby="contactError ? 'contact-error' : undefined" class="w-full px-3 py-2.5 rounded-lg border border-[var(--color-border)] text-sm text-[var(--color-text)] bg-[var(--color-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-primary)]">
+            <select id="contact-recipient" v-model="contactForm.recipient" aria-required="true" :aria-describedby="contactError ? 'contact-error' : undefined" class="w-full h-[42px] px-3 py-2.5 rounded-lg border border-[var(--color-border)] text-sm text-[var(--color-text)] bg-[var(--color-bg)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] hover:border-[var(--color-primary)]">
               <option v-for="option in recipientOptions" :key="option" :value="option">{{ option }}</option>
             </select>
           </div>

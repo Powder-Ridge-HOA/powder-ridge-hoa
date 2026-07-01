@@ -6,6 +6,46 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const TO_EMAIL = process.env.CONTACT_TO_EMAIL || 'powderridgesecretary@gmail.com';
 const FROM_EMAIL = process.env.CONTACT_FROM_EMAIL || 'onboarding@resend.dev';
 
+const SANITY_PROJECT_ID = process.env.VITE_SANITY_PROJECT_ID || process.env.SANITY_PROJECT_ID;
+const SANITY_DATASET = process.env.VITE_SANITY_DATASET || process.env.SANITY_DATASET || 'production';
+const SANITY_API_VERSION = process.env.VITE_SANITY_API_VERSION || process.env.SANITY_API_VERSION || '2024-01-01';
+
+// Maps each "Who are you contacting?" dropdown value to a GROQ expression that
+// resolves the destination email from Sanity, so the board can manage routing
+// from Studio. Keyed by the exact dropdown value; the `recipient` string is
+// never interpolated into a query — only these fixed, trusted expressions are
+// ever sent — so there is no query-injection surface. Anything not in this map
+// (or an empty/failed lookup) falls back to TO_EMAIL (the secretary).
+const RECIPIENT_EMAIL_QUERIES: Record<string, string> = {
+  President: `*[_type == "boardMember" && position == "President"][0].email`,
+  'Vice President': `*[_type == "boardMember" && position == "Vice President"][0].email`,
+  Secretary: `*[_type == "boardMember" && position match "*Secretary*"][0].email`,
+  Treasurer: `*[_type == "boardMember" && position match "*Treasurer*"][0].email`,
+  'Design Review Committee': `*[_type == "committee" && name match "Architectural*"][0].email`,
+};
+
+// Look up the destination email for the chosen recipient in Sanity, falling back
+// to the secretary address on any miss so a message is never silently dropped.
+async function resolveRecipientEmail(recipient: string): Promise<string> {
+  const expr = RECIPIENT_EMAIL_QUERIES[recipient];
+  if (!expr || !SANITY_PROJECT_ID) return TO_EMAIL;
+  try {
+    const url = new URL(`https://${SANITY_PROJECT_ID}.api.sanity.io/v${SANITY_API_VERSION}/data/query/${SANITY_DATASET}`);
+    url.searchParams.set('query', expr);
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      console.error('[send-message] Sanity recipient lookup failed:', res.status);
+      return TO_EMAIL;
+    }
+    const json = await res.json();
+    const email = typeof json.result === 'string' ? json.result.trim() : '';
+    return email || TO_EMAIL;
+  } catch (err) {
+    console.error('[send-message] Sanity recipient lookup error:', err);
+    return TO_EMAIL;
+  }
+}
+
 export default async (req: Request, _context: Context) => {
   // Only allow POST
   if (req.method !== 'POST') {
@@ -34,9 +74,11 @@ export default async (req: Request, _context: Context) => {
       });
     }
 
+    const toEmail = await resolveRecipientEmail(recipient);
+
     const { error } = await resend.emails.send({
       from: FROM_EMAIL,
-      to: TO_EMAIL,
+      to: toEmail,
       replyTo: email,
       subject: `[${recipient}] ${subject} — from ${name}`,
       html: `
